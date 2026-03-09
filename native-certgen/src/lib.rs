@@ -3,4 +3,5 @@ mod types;
 mod keygen;
 pub mod keybox;
 pub mod attestation;
+pub mod certbuilder;
 pub mod logging;
