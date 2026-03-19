@@ -242,6 +242,7 @@ boot=device_default
 - **[5ec1cff](https://github.com/5ec1cff/TrickyStore)** — TrickyStore, the project that pioneered keystore interception on Android
 - **[LSPlt](https://github.com/LSPosed/LSPlt)** — PLT hook library used for binder interception
 - **[ring](https://github.com/briansmith/ring)** — Rust cryptography library powering native cert generation
+- **[MhmRdd](https://github.com/MhmRdd)** — AOSP compliance improvements via upstream [PR #157](https://github.com/JingMatrix/TEESimulator/pull/157), including authorize_create enforcement, attestation extension alignment, and binder transaction filtering
 - **[fatalcoder524](https://github.com/fatalcoder524)** — a real contributor and collaborator on this project
 - **[huguangares](https://github.com/huguangares)** — collaborator and tester
 
