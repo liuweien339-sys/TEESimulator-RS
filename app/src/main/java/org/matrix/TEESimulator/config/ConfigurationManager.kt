@@ -7,6 +7,7 @@ import android.os.IBinder
 import android.os.ServiceManager
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import org.matrix.TEESimulator.attestation.DeviceAttestationService
 import org.matrix.TEESimulator.logging.SystemLogger
 import org.matrix.TEESimulator.pki.KeyBoxManager
 
@@ -102,7 +103,7 @@ object ConfigurationManager {
             when (packageModes[pkg]) {
                 Mode.GENERATE -> return Mode.GENERATE
                 Mode.PATCH -> return Mode.PATCH
-                Mode.AUTO -> return Mode.AUTO
+                Mode.AUTO -> return if (DeviceAttestationService.isTeeFunctional) Mode.PATCH else Mode.GENERATE
                 null -> continue
             }
         }
@@ -165,7 +166,7 @@ object ConfigurationManager {
                         newKeyboxes[pkg] = currentKeybox
                     }
                     else -> {
-                        newModes[trimmedLine] = Mode.GENERATE
+                        newModes[trimmedLine] = Mode.AUTO
                         newKeyboxes[trimmedLine] = currentKeybox
                     }
                 }
