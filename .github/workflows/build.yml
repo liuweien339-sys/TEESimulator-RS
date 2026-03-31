@@ -140,30 +140,30 @@ jobs:
           gh release delete "$VER" --yes 2>/dev/null || true
           RELEASE=$(ls zips/*Release*.zip | head -1)
           DEBUG=$(ls zips/*Debug*.zip | head -1)
-          cp "$RELEASE" zips/TEESimulator-RS-Release.zip
-          cp "$DEBUG" zips/TEESimulator-RS-Debug.zip
           gh release create "$VER" \
             --title "$VER" \
             --latest \
             --notes-file /tmp/notes.md \
             "$RELEASE" \
-            "$DEBUG" \
-            zips/TEESimulator-RS-Release.zip \
-            zips/TEESimulator-RS-Debug.zip
+            "$DEBUG"
         env:
           VER: ${{ steps.ver.outputs.version }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Bump update.json versionCode
+      - name: Bump update.json
         run: |
           COUNT=$(git rev-list HEAD --count)
-          CURRENT=$(jq -r '.versionCode' module/update.json)
-          if [ "$COUNT" != "$CURRENT" ]; then
-            jq ".versionCode = $COUNT" module/update.json > /tmp/update.json
-            mv /tmp/update.json module/update.json
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add module/update.json
-            git commit -m "chore(release): bump versionCode to $COUNT [skip ci]"
+          RELEASE_NAME=$(basename zips/*Release*.zip)
+          ZIP_URL="https://github.com/${{ github.repository }}/releases/download/${VER}/${RELEASE_NAME}"
+          jq ".versionCode = $COUNT | .zipUrl = \"$ZIP_URL\"" module/update.json > /tmp/update.json
+          mv /tmp/update.json module/update.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add module/update.json
+          git diff --cached --quiet || {
+            git commit -m "chore(release): bump update.json to $VER [skip ci]"
             git push origin HEAD:main
-          fi
+          }
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
