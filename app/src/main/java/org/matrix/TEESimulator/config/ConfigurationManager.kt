@@ -93,7 +93,16 @@ object ConfigurationManager {
 
     fun shouldSkipUid(uid: Int): Boolean = getPackageModeForUid(uid) == null
 
-    fun isAutoMode(uid: Int): Boolean = getPackageModeForUid(uid) == Mode.AUTO
+    fun isAutoMode(uid: Int): Boolean {
+        for (pkg in getPackagesForUid(uid)) {
+            when (packageModes[pkg]) {
+                Mode.GENERATE, Mode.PATCH -> return false
+                Mode.AUTO -> return true
+                null -> continue
+            }
+        }
+        return false
+    }
 
     private fun getPackageModeForUid(uid: Int): Mode? {
         val packages = getPackagesForUid(uid)
