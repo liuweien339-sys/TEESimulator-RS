@@ -10,6 +10,7 @@ object BootStateManager {
             "ro.boot.verifiedbootstate" to "green",
             "ro.boot.flash.locked" to "1",
             "ro.boot.veritymode" to "enforcing",
+            "ro.boot.vbmeta.device_state" to "locked",
         )
 
     fun apply() {
