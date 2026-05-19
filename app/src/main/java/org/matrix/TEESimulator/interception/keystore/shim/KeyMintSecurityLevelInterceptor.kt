@@ -1068,9 +1068,7 @@ private fun KeyMintAttestation.toAuthorizations(
     this.blockMode.forEach { authList.add(createAuth(Tag.BLOCK_MODE, KeyParameterValue.blockMode(it))) }
     this.digest.forEach { authList.add(createAuth(Tag.DIGEST, KeyParameterValue.digest(it))) }
     this.padding.forEach { authList.add(createAuth(Tag.PADDING, KeyParameterValue.paddingMode(it))) }
-    if (this.algorithm != Algorithm.EC || this.ecCurve == null) {
-        authList.add(createAuth(Tag.KEY_SIZE, KeyParameterValue.integer(this.keySize)))
-    }
+    authList.add(createAuth(Tag.KEY_SIZE, KeyParameterValue.integer(this.keySize)))
     if (this.rsaPublicExponent != null) {
         authList.add(createAuth(Tag.RSA_PUBLIC_EXPONENT, KeyParameterValue.longInteger(this.rsaPublicExponent.toLong())))
     }
