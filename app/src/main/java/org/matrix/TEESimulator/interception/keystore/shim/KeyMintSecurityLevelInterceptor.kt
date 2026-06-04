@@ -865,7 +865,10 @@ class KeyMintSecurityLevelInterceptor(
                 )
             }
 
-            return InterceptorUtils.createTypedObjectReply(metadata, diagnosticTag = "gen-mode-sym")
+            return InterceptorUtils.createTypedObjectReply(
+                metadata,
+                diagnosticTag = "gen-mode-sym-uid$callingUid-tx$txId",
+            )
         }
 
         // The framework can designate the attest key by alias OR — for a persistent key the caller
@@ -978,7 +981,7 @@ class KeyMintSecurityLevelInterceptor(
 
         return InterceptorUtils.createTypedObjectReply(
             response.metadata,
-            diagnosticTag = "gen-mode-asym",
+            diagnosticTag = "gen-mode-asym-uid$callingUid-tx$txId",
         )
     }
 
