@@ -26,10 +26,11 @@ object SystemLogger {
     private val suppressedCount = AtomicInteger(0)
 
     /**
-     * Returns true if this message should be emitted. Resets the window if expired
-     * and emits a suppression summary for the previous window.
+     * Returns true if this message should be emitted. Resets the window if expired and emits a
+     * suppression summary for the previous window.
      */
-    @PublishedApi internal fun acquireLogPermit(): Boolean {
+    @PublishedApi
+    internal fun acquireLogPermit(): Boolean {
         val now = System.currentTimeMillis()
         val start = windowStart.get()
         if (now - start > RATE_LIMIT_WINDOW_MS) {
@@ -38,7 +39,10 @@ object SystemLogger {
                 val suppressed = suppressedCount.getAndSet(0)
                 windowCount.set(1) // this call counts as #1 in the new window
                 if (suppressed > 0) {
-                    Log.i(TAG, "[rate-limit] suppressed $suppressed log messages in previous window")
+                    Log.i(
+                        TAG,
+                        "[rate-limit] suppressed $suppressed log messages in previous window",
+                    )
                 }
                 return true
             }
@@ -49,9 +53,7 @@ object SystemLogger {
         return false
     }
 
-    /**
-     * Logs a debug message. Use this for fine-grained information that is useful for debugging.
-     */
+    /** Logs a debug message. Use this for fine-grained information that is useful for debugging. */
     fun debug(message: String) {
         if (!isDebugBuild) return
         if (!acquireLogPermit()) return
@@ -65,9 +67,7 @@ object SystemLogger {
         Log.d(TAG, message())
     }
 
-    /**
-     * Logs an informational message. Use this to report major application lifecycle events.
-     */
+    /** Logs an informational message. Use this to report major application lifecycle events. */
     fun info(message: String) {
         if (!acquireLogPermit()) return
         Log.i(TAG, message)
@@ -79,9 +79,7 @@ object SystemLogger {
         Log.i(TAG, message())
     }
 
-    /**
-     * Logs a warning message. Warnings are never rate-limited.
-     */
+    /** Logs a warning message. Warnings are never rate-limited. */
     fun warning(message: String, throwable: Throwable? = null) {
         if (throwable != null) {
             Log.w(TAG, message, throwable)
@@ -90,9 +88,7 @@ object SystemLogger {
         }
     }
 
-    /**
-     * Logs an error message. Errors are never rate-limited.
-     */
+    /** Logs an error message. Errors are never rate-limited. */
     fun error(message: String, throwable: Throwable? = null) {
         if (throwable != null) {
             Log.e(TAG, message, throwable)

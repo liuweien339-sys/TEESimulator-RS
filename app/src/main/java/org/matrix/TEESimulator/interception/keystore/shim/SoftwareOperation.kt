@@ -9,12 +9,12 @@ import android.hardware.security.keymint.KeyPurpose
 import android.hardware.security.keymint.PaddingMode
 import android.hardware.security.keymint.Tag
 import android.os.ServiceSpecificException
-import java.util.concurrent.locks.LockSupport
 import android.system.keystore2.IKeystoreOperation
 import android.system.keystore2.KeyParameters
 import java.security.KeyPair
 import java.security.Signature
 import java.security.SignatureException
+import java.util.concurrent.locks.LockSupport
 import javax.crypto.Cipher
 import org.matrix.TEESimulator.attestation.KeyMintAttestation
 import org.matrix.TEESimulator.logging.KeyMintParameterLogger
@@ -24,9 +24,13 @@ private sealed interface CryptoPrimitive {
     fun updateAad(aadInput: ByteArray?) {
         throw ServiceSpecificException(KeystoreErrorCodes.invalidTag)
     }
+
     fun update(data: ByteArray?): ByteArray?
+
     fun finish(data: ByteArray?, signature: ByteArray?): ByteArray?
+
     fun abort()
+
     fun getBeginParameters(): Array<KeyParameter>? = null
 }
 
@@ -118,10 +122,16 @@ private class Verifier(keyPair: KeyPair, params: KeyMintAttestation) : CryptoPri
     override fun finish(data: ByteArray?, signature: ByteArray?): ByteArray? {
         if (data != null) update(data)
         if (signature == null) {
-            throw ServiceSpecificException(KeystoreErrorCodes.verificationFailed, "Signature to verify is null")
+            throw ServiceSpecificException(
+                KeystoreErrorCodes.verificationFailed,
+                "Signature to verify is null",
+            )
         }
         if (!this.signature.verify(signature)) {
-            throw ServiceSpecificException(KeystoreErrorCodes.verificationFailed, "Signature verification failed")
+            throw ServiceSpecificException(
+                KeystoreErrorCodes.verificationFailed,
+                "Signature verification failed",
+            )
         }
         return null
     }
@@ -201,7 +211,8 @@ class SoftwareOperation(
     private val latencyFloorMs: Long = 0L,
 ) {
     private val primitive: CryptoPrimitive
-    @Volatile var finalized = false
+    @Volatile
+    var finalized = false
         private set
 
     var onFinishCallback: (() -> Unit)? = null
@@ -229,9 +240,9 @@ class SoftwareOperation(
             // silently corrupt their session.
             SystemLogger.warning(
                 "[SoftwareOp TX_ID: $txId] Purpose missing on restored key " +
-                "(authorizations=${params.purpose}, keyPair=${if (keyPair != null) "present" else "null"}, " +
-                "secretKey=${if (secretKey != null) "present" else "null"}). " +
-                "Returning unsupportedPurpose."
+                    "(authorizations=${params.purpose}, keyPair=${if (keyPair != null) "present" else "null"}, " +
+                    "secretKey=${if (secretKey != null) "present" else "null"}). " +
+                    "Returning unsupportedPurpose."
             )
             throw ServiceSpecificException(
                 KeystoreErrorCodes.unsupportedPurpose,
@@ -242,40 +253,50 @@ class SoftwareOperation(
         primitive =
             when (purpose) {
                 KeyPurpose.SIGN -> {
-                    val kp = keyPair ?: throw ServiceSpecificException(
-                        KeystoreErrorCodes.invalidArgument,
-                        "[SoftwareOp TX_ID: $txId] SIGN requested but keyPair is null",
-                    )
+                    val kp =
+                        keyPair
+                            ?: throw ServiceSpecificException(
+                                KeystoreErrorCodes.invalidArgument,
+                                "[SoftwareOp TX_ID: $txId] SIGN requested but keyPair is null",
+                            )
                     Signer(kp, params)
                 }
                 KeyPurpose.VERIFY -> {
-                    val kp = keyPair ?: throw ServiceSpecificException(
-                        KeystoreErrorCodes.invalidArgument,
-                        "[SoftwareOp TX_ID: $txId] VERIFY requested but keyPair is null",
-                    )
+                    val kp =
+                        keyPair
+                            ?: throw ServiceSpecificException(
+                                KeystoreErrorCodes.invalidArgument,
+                                "[SoftwareOp TX_ID: $txId] VERIFY requested but keyPair is null",
+                            )
                     Verifier(kp, params)
                 }
                 KeyPurpose.ENCRYPT -> {
-                    val key: java.security.Key = secretKey ?: keyPair?.public
-                        ?: throw ServiceSpecificException(
-                            KeystoreErrorCodes.unsupportedPurpose,
-                            "[SoftwareOp TX_ID: $txId] ENCRYPT requires either secretKey or keyPair.public",
-                        )
+                    val key: java.security.Key =
+                        secretKey
+                            ?: keyPair?.public
+                            ?: throw ServiceSpecificException(
+                                KeystoreErrorCodes.unsupportedPurpose,
+                                "[SoftwareOp TX_ID: $txId] ENCRYPT requires either secretKey or keyPair.public",
+                            )
                     CipherPrimitive(key, params, Cipher.ENCRYPT_MODE)
                 }
                 KeyPurpose.DECRYPT -> {
-                    val key: java.security.Key = secretKey ?: keyPair?.private
-                        ?: throw ServiceSpecificException(
-                            KeystoreErrorCodes.unsupportedPurpose,
-                            "[SoftwareOp TX_ID: $txId] DECRYPT requires either secretKey or keyPair.private",
-                        )
+                    val key: java.security.Key =
+                        secretKey
+                            ?: keyPair?.private
+                            ?: throw ServiceSpecificException(
+                                KeystoreErrorCodes.unsupportedPurpose,
+                                "[SoftwareOp TX_ID: $txId] DECRYPT requires either secretKey or keyPair.private",
+                            )
                     CipherPrimitive(key, params, Cipher.DECRYPT_MODE)
                 }
                 KeyPurpose.AGREE_KEY -> {
-                    val kp = keyPair ?: throw ServiceSpecificException(
-                        KeystoreErrorCodes.invalidArgument,
-                        "[SoftwareOp TX_ID: $txId] AGREE_KEY requested but keyPair is null",
-                    )
+                    val kp =
+                        keyPair
+                            ?: throw ServiceSpecificException(
+                                KeystoreErrorCodes.invalidArgument,
+                                "[SoftwareOp TX_ID: $txId] AGREE_KEY requested but keyPair is null",
+                            )
                     KeyAgreementPrimitive(kp)
                 }
                 else ->
@@ -288,29 +309,39 @@ class SoftwareOperation(
 
     private fun checkActive() {
         if (finalized) {
-            SystemLogger.debug("[SoftwareOp TX_ID: $txId] Rejected: operation already finalized (pruned or completed)")
+            SystemLogger.debug(
+                "[SoftwareOp TX_ID: $txId] Rejected: operation already finalized (pruned or completed)"
+            )
             throw ServiceSpecificException(KeystoreErrorCodes.invalidOperationHandle)
         }
     }
 
     private fun checkInputLength(data: ByteArray?) {
         if (data != null && data.size > MAX_RECEIVE_DATA) {
-            SystemLogger.info("[SoftwareOp TX_ID: $txId] Input too large: ${data.size} > $MAX_RECEIVE_DATA, throwing TOO_MUCH_DATA(${KeystoreErrorCodes.tooMuchData})")
+            SystemLogger.info(
+                "[SoftwareOp TX_ID: $txId] Input too large: ${data.size} > $MAX_RECEIVE_DATA, throwing TOO_MUCH_DATA(${KeystoreErrorCodes.tooMuchData})"
+            )
             throw ServiceSpecificException(KeystoreErrorCodes.tooMuchData)
         }
     }
 
     fun updateAad(aadInput: ByteArray?) {
-        SystemLogger.info("[SoftwareOp TX_ID: $txId] updateAad() ENTRY inputSize=${aadInput?.size ?: 0} primitive=${primitive::class.simpleName}")
+        SystemLogger.info(
+            "[SoftwareOp TX_ID: $txId] updateAad() ENTRY inputSize=${aadInput?.size ?: 0} primitive=${primitive::class.simpleName}"
+        )
         checkActive()
         checkInputLength(aadInput)
         try {
             primitive.updateAad(aadInput)
-            SystemLogger.info("[SoftwareOp TX_ID: $txId] updateAad() RETURNED_NORMALLY (unexpected for non-AEAD)")
+            SystemLogger.info(
+                "[SoftwareOp TX_ID: $txId] updateAad() RETURNED_NORMALLY (unexpected for non-AEAD)"
+            )
         } catch (throwable: Throwable) {
             val top = throwable.stackTrace.firstOrNull()?.toString() ?: "<no-frame>"
             val code = (throwable as? ServiceSpecificException)?.errorCode
-            SystemLogger.info("[SoftwareOp TX_ID: $txId] updateAad() THREW class=${throwable::class.java.name} code=$code msg=${throwable.message} top=$top")
+            SystemLogger.info(
+                "[SoftwareOp TX_ID: $txId] updateAad() THREW class=${throwable::class.java.name} code=$code msg=${throwable.message} top=$top"
+            )
             throw throwable
         }
     }
@@ -358,13 +389,18 @@ class SoftwareOperation(
         SystemLogger.debug("[SoftwareOp TX_ID: $txId] Operation aborted.")
     }
 
-    private fun mapToServiceSpecificException(e: Exception): ServiceSpecificException = when (e) {
-        is SignatureException -> ServiceSpecificException(KeystoreErrorCodes.verificationFailed, e.message)
-        is javax.crypto.BadPaddingException -> ServiceSpecificException(KeystoreErrorCodes.invalidArgument, e.message)
-        is javax.crypto.IllegalBlockSizeException -> ServiceSpecificException(KeystoreErrorCodes.invalidInputLength, e.message)
-        is java.security.InvalidKeyException -> ServiceSpecificException(KeystoreErrorCodes.incompatibleKey, e.message)
-        else -> ServiceSpecificException(KeystoreErrorCodes.unknownError, e.message)
-    }
+    private fun mapToServiceSpecificException(e: Exception): ServiceSpecificException =
+        when (e) {
+            is SignatureException ->
+                ServiceSpecificException(KeystoreErrorCodes.verificationFailed, e.message)
+            is javax.crypto.BadPaddingException ->
+                ServiceSpecificException(KeystoreErrorCodes.invalidArgument, e.message)
+            is javax.crypto.IllegalBlockSizeException ->
+                ServiceSpecificException(KeystoreErrorCodes.invalidInputLength, e.message)
+            is java.security.InvalidKeyException ->
+                ServiceSpecificException(KeystoreErrorCodes.incompatibleKey, e.message)
+            else -> ServiceSpecificException(KeystoreErrorCodes.unknownError, e.message)
+        }
 
     companion object {
         private const val MAX_RECEIVE_DATA = 0x8000
@@ -429,12 +465,11 @@ internal object KeystoreErrorCodes {
     }
 
     fun resolveField(className: String, fieldName: String, fallback: Int): Int =
-        runCatching {
-            Class.forName(className).getField(fieldName).getInt(null)
-        }.getOrElse {
-            SystemLogger.debug("Resolved $className.$fieldName via fallback: $fallback")
-            fallback
-        }
+        runCatching { Class.forName(className).getField(fieldName).getInt(null) }
+            .getOrElse {
+                SystemLogger.debug("Resolved $className.$fieldName via fallback: $fallback")
+                fallback
+            }
 }
 
 class SoftwareOperationBinder(private val operation: SoftwareOperation) :
@@ -442,13 +477,17 @@ class SoftwareOperationBinder(private val operation: SoftwareOperation) :
 
     @Synchronized
     override fun updateAad(aadInput: ByteArray?) {
-        SystemLogger.info("[SoftwareOpBinder] updateAad() ENTRY callingUid=${android.os.Binder.getCallingUid()} size=${aadInput?.size ?: 0}")
+        SystemLogger.info(
+            "[SoftwareOpBinder] updateAad() ENTRY callingUid=${android.os.Binder.getCallingUid()} size=${aadInput?.size ?: 0}"
+        )
         try {
             operation.updateAad(aadInput)
             SystemLogger.info("[SoftwareOpBinder] updateAad() RETURNED_NORMALLY")
         } catch (throwable: Throwable) {
             val code = (throwable as? ServiceSpecificException)?.errorCode
-            SystemLogger.info("[SoftwareOpBinder] updateAad() PROPAGATING class=${throwable::class.java.name} code=$code msg=${throwable.message}")
+            SystemLogger.info(
+                "[SoftwareOpBinder] updateAad() PROPAGATING class=${throwable::class.java.name} code=$code msg=${throwable.message}"
+            )
             throw throwable
         }
     }

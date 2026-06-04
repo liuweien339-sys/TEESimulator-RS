@@ -66,11 +66,7 @@ android {
     }
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_21)
-    }
-}
+kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_21) } }
 
 dependencies {
     compileOnly(project(":stub"))
@@ -79,27 +75,35 @@ dependencies {
 }
 
 // --- Rust native cert gen build task ---
-val buildRustCertgen by tasks.registering(Exec::class) {
-    group = "TEESimulator-RS Native Build"
-    description = "Builds libcertgen.so via cargo-ndk for arm64-v8a."
+val buildRustCertgen by
+    tasks.registering(Exec::class) {
+        group = "TEESimulator-RS Native Build"
+        description = "Builds libcertgen.so via cargo-ndk for arm64-v8a."
 
-    workingDir = rootProject.projectDir.resolve("native-certgen")
+        workingDir = rootProject.projectDir.resolve("native-certgen")
 
-    commandLine(
-        "cargo", "ndk",
-        "-t", "arm64-v8a",
-        "-o", rootProject.projectDir.resolve("app/src/main/jniLibs").absolutePath,
-        "build", "--release"
-    )
+        commandLine(
+            "cargo",
+            "ndk",
+            "-t",
+            "arm64-v8a",
+            "-o",
+            rootProject.projectDir.resolve("app/src/main/jniLibs").absolutePath,
+            "build",
+            "--release",
+        )
 
-    inputs.dir(rootProject.projectDir.resolve("native-certgen/src"))
-    inputs.file(rootProject.projectDir.resolve("native-certgen/Cargo.toml"))
-    inputs.file(rootProject.projectDir.resolve("native-certgen/Cargo.lock"))
-    outputs.dir(rootProject.projectDir.resolve("app/src/main/jniLibs"))
+        inputs.dir(rootProject.projectDir.resolve("native-certgen/src"))
+        inputs.file(rootProject.projectDir.resolve("native-certgen/Cargo.toml"))
+        inputs.file(rootProject.projectDir.resolve("native-certgen/Cargo.lock"))
+        outputs.dir(rootProject.projectDir.resolve("app/src/main/jniLibs"))
 
-    environment("ANDROID_NDK_HOME", android.ndkDirectory.absolutePath)
-    environment("PATH", "${System.getProperty("user.home")}/.cargo/bin:${System.getenv("PATH") ?: ""}")
-}
+        environment("ANDROID_NDK_HOME", android.ndkDirectory.absolutePath)
+        environment(
+            "PATH",
+            "${System.getProperty("user.home")}/.cargo/bin:${System.getenv("PATH") ?: ""}",
+        )
+    }
 
 // AGP auto-detects jniLibs/ as an input to mergeJniLibFolders — wire the dependency
 tasks.configureEach {
@@ -110,31 +114,32 @@ tasks.configureEach {
 
 // Auto-rewrite module/update.json on every packaging build so versionCode and
 // zipUrl track gitCommitCount automatically, matching module.prop.
-val refreshUpdateJson by tasks.registering {
-    group = "TEESimulator-RS Module Packaging"
-    description = "Rewrite module/update.json to match current verName and gitCommitCount."
+val refreshUpdateJson by
+    tasks.registering {
+        group = "TEESimulator-RS Module Packaging"
+        description = "Rewrite module/update.json to match current verName and gitCommitCount."
 
-    val updateJsonFile = rootProject.projectDir.resolve("module/update.json")
-    val capturedVerName = verName
-    val capturedCount = gitCommitCount
+        val updateJsonFile = rootProject.projectDir.resolve("module/update.json")
+        val capturedVerName = verName
+        val capturedCount = gitCommitCount
 
-    inputs.property("verName", capturedVerName)
-    inputs.property("gitCommitCount", capturedCount)
-    outputs.file(updateJsonFile)
+        inputs.property("verName", capturedVerName)
+        inputs.property("gitCommitCount", capturedCount)
+        outputs.file(updateJsonFile)
 
-    doLast {
-        val fullVer = "$capturedVerName-$capturedCount"
-        updateJsonFile.writeText(
-            """{
+        doLast {
+            val fullVer = "$capturedVerName-$capturedCount"
+            updateJsonFile.writeText(
+                """{
   "version": "$fullVer",
   "versionCode": $capturedCount,
   "zipUrl": "https://github.com/Enginex0/TEESimulator-RS/releases/download/$fullVer/TEESimulator-RS-$fullVer-Release.zip",
   "changelog": "https://raw.githubusercontent.com/Enginex0/TEESimulator-RS/main/module/changelog.md"
 }
 """
-        )
+            )
+        }
     }
-}
 
 androidComponents {
     onVariants(selector().all()) { variant ->
@@ -177,14 +182,20 @@ androidComponents {
                     }
                 }
 
-                val nativeLibsDir = if (isDebug) {
-                    "intermediates/merged_native_libs/${variant.name}/merge${capitalized}NativeLibs/out/lib"
-                } else {
-                    "intermediates/stripped_native_libs/${variant.name}/strip${capitalized}DebugSymbols/out/lib"
-                }
+                val nativeLibsDir =
+                    if (isDebug) {
+                        "intermediates/merged_native_libs/${variant.name}/merge${capitalized}NativeLibs/out/lib"
+                    } else {
+                        "intermediates/stripped_native_libs/${variant.name}/strip${capitalized}DebugSymbols/out/lib"
+                    }
                 from(project.layout.buildDirectory.dir(nativeLibsDir)) {
                     into("lib")
-                    include("**/libinject.so", "**/libTEESimulator.so", "**/libsupervisor.so", "**/libcertgen.so")
+                    include(
+                        "**/libinject.so",
+                        "**/libTEESimulator.so",
+                        "**/libsupervisor.so",
+                        "**/libcertgen.so",
+                    )
                 }
 
                 // Now, copy and process the files from 'module' directory.

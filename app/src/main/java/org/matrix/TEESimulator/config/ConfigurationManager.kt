@@ -96,7 +96,8 @@ object ConfigurationManager {
     fun isAutoMode(uid: Int): Boolean {
         for (pkg in getPackagesForUid(uid)) {
             when (packageModes[pkg]) {
-                Mode.GENERATE, Mode.PATCH -> return false
+                Mode.GENERATE,
+                Mode.PATCH -> return false
                 Mode.AUTO -> return true
                 null -> continue
             }
@@ -112,7 +113,9 @@ object ConfigurationManager {
             when (packageModes[pkg]) {
                 Mode.GENERATE -> return Mode.GENERATE
                 Mode.PATCH -> return Mode.PATCH
-                Mode.AUTO -> return if (DeviceAttestationService.isTeeFunctional) Mode.PATCH else Mode.GENERATE
+                Mode.AUTO ->
+                    return if (DeviceAttestationService.isTeeFunctional) Mode.PATCH
+                    else Mode.GENERATE
                 null -> continue
             }
         }
@@ -260,7 +263,9 @@ object ConfigurationManager {
             // resolves to the real device prop — force boot/vendor through the same path
             // to prevent cross-component date mismatches on non-Pixel devices.
             if (newGlobalLevel?.system.equals("prop", ignoreCase = true)) {
-                SystemLogger.info("system=prop: forcing boot/vendor to derive from device props (were: boot=${newGlobalLevel?.boot}, vendor=${newGlobalLevel?.vendor})")
+                SystemLogger.info(
+                    "system=prop: forcing boot/vendor to derive from device props (were: boot=${newGlobalLevel?.boot}, vendor=${newGlobalLevel?.vendor})"
+                )
                 newGlobalLevel = newGlobalLevel?.copy(boot = "prop", vendor = "prop")
             }
             contextLines.remove("") // Remove global context to iterate over packages next
@@ -293,10 +298,12 @@ object ConfigurationManager {
 
             val file = if (event != DELETE) File(configRoot, path) else null
             when (path) {
-                TARGET_PACKAGES_FILE -> file?.let { loadTargetPackages(it) }
-                    ?: SystemLogger.warning("$TARGET_PACKAGES_FILE was deleted.")
-                PATCH_LEVEL_FILE -> file?.let { loadPatchLevelConfig(it) }
-                    ?: SystemLogger.warning("$PATCH_LEVEL_FILE was deleted.")
+                TARGET_PACKAGES_FILE ->
+                    file?.let { loadTargetPackages(it) }
+                        ?: SystemLogger.warning("$TARGET_PACKAGES_FILE was deleted.")
+                PATCH_LEVEL_FILE ->
+                    file?.let { loadPatchLevelConfig(it) }
+                        ?: SystemLogger.warning("$PATCH_LEVEL_FILE was deleted.")
                 // Any change to an XML file is assumed to be a keybox.
                 // The cache in KeyBoxManager will handle reloading it on its next use.
                 else ->

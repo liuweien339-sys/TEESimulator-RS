@@ -37,12 +37,13 @@ object InterceptorUtils {
         }
 
     fun createErrorReply(errorCode: Int): BinderInterceptor.TransactionResult.OverrideReply {
-        val parcel = Parcel.obtain().apply {
-            writeInt(EX_SERVICE_SPECIFIC)
-            writeString(synthesizeSseMessage(errorCode))
-            writeInt(0) // empty remote stack trace header (AOSP Status.cpp:196)
-            writeInt(errorCode)
-        }
+        val parcel =
+            Parcel.obtain().apply {
+                writeInt(EX_SERVICE_SPECIFIC)
+                writeString(synthesizeSseMessage(errorCode))
+                writeInt(0) // empty remote stack trace header (AOSP Status.cpp:196)
+                writeInt(errorCode)
+            }
         return BinderInterceptor.TransactionResult.OverrideReply(parcel)
     }
 

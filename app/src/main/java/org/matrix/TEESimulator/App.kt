@@ -74,9 +74,9 @@ object App {
     }
 
     /**
-     * Release builds never emit diagnostics. Sweep any `.bin` dumps a prior
-     * debug install left in the world-readable temp dir so they can't act as a
-     * detection artifact for apps that probe /data/local/tmp.
+     * Release builds never emit diagnostics. Sweep any `.bin` dumps a prior debug install left in
+     * the world-readable temp dir so they can't act as a detection artifact for apps that probe
+     * /data/local/tmp.
      */
     private fun purgeDebugDiagnostics() {
         if (SystemLogger.isDebugBuild) return
@@ -88,7 +88,9 @@ object App {
         if (stale.isNotEmpty()) {
             // warning() bypasses the rate limiter, so this once-per-boot audit
             // line survives the noisy startup window.
-            SystemLogger.warning("Purged ${stale.size} stale debug diagnostic(s) from /data/local/tmp")
+            SystemLogger.warning(
+                "Purged ${stale.size} stale debug diagnostic(s) from /data/local/tmp"
+            )
         }
     }
 

@@ -142,7 +142,8 @@ data class KeyMintAttestation(
 
     fun isAttestKey(): Boolean = purpose.size == 1 && purpose.contains(KeyPurpose.ATTEST_KEY)
 
-    fun isImportKey(): Boolean = origin == KeyOrigin.IMPORTED || origin == KeyOrigin.SECURELY_IMPORTED
+    fun isImportKey(): Boolean =
+        origin == KeyOrigin.IMPORTED || origin == KeyOrigin.SECURELY_IMPORTED
 }
 
 // --- Private helper extension functions for parsing KeyParameter arrays ---

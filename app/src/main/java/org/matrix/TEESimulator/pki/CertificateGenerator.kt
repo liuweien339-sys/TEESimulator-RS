@@ -93,37 +93,39 @@ object CertificateGenerator {
             )
 
         return try {
-                // AOSP ta/src/keys.rs:451-478: no challenge + no attestKey = self-signed, depth 1
-                if (challenge == null && attestKeyAlias == null) {
-                    SystemLogger.trace { "[certgen] no-challenge key: self-signed, depth=1, purposes=${params.purpose}" }
-                    return listOf(buildSelfSignedCertificate(subjectKeyPair, params))
+            // AOSP ta/src/keys.rs:451-478: no challenge + no attestKey = self-signed, depth 1
+            if (challenge == null && attestKeyAlias == null) {
+                SystemLogger.trace {
+                    "[certgen] no-challenge key: self-signed, depth=1, purposes=${params.purpose}"
                 }
+                return listOf(buildSelfSignedCertificate(subjectKeyPair, params))
+            }
 
-                val keybox = getKeyboxForAlgorithm(uid, params.algorithm)
+            val keybox = getKeyboxForAlgorithm(uid, params.algorithm)
 
-                val attestKeyInfo =
-                    if (attestKeyAlias != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        getAttestationKeyInfo(uid, attestKeyAlias)
-                    } else null
+            val attestKeyInfo =
+                if (attestKeyAlias != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    getAttestationKeyInfo(uid, attestKeyAlias)
+                } else null
 
-                val (signingKey, issuer) = attestKeyInfo
-                    ?.let { it.first to it.second }
+            val (signingKey, issuer) =
+                attestKeyInfo?.let { it.first to it.second }
                     ?: (keybox.keyPair to getIssuerFromKeybox(keybox))
 
-                val leafCert =
-                    buildCertificate(subjectKeyPair, signingKey, issuer, params, uid, securityLevel)
+            val leafCert =
+                buildCertificate(subjectKeyPair, signingKey, issuer, params, uid, securityLevel)
 
-                if (attestKeyInfo != null) {
-                    listOf(leafCert)
-                } else {
-                    listOf(leafCert) + keybox.certificates
-                }
-            } catch (e: android.os.ServiceSpecificException) {
-                throw e
-            } catch (e: Exception) {
-                SystemLogger.error("Failed to generate certificate chain.", e)
-                null
+            if (attestKeyInfo != null) {
+                listOf(leafCert)
+            } else {
+                listOf(leafCert) + keybox.certificates
             }
+        } catch (e: android.os.ServiceSpecificException) {
+            throw e
+        } catch (e: Exception) {
+            SystemLogger.error("Failed to generate certificate chain.", e)
+            null
+        }
     }
 
     /**
@@ -138,27 +140,23 @@ object CertificateGenerator {
         securityLevel: Int,
     ): Pair<KeyPair, List<Certificate>>? {
         return try {
-                SystemLogger.info(
-                    "Generating new attested key pair for alias: '$alias' (UID: $uid)"
-                )
-                val newKeyPair =
-                    generateSoftwareKeyPair(params)
-                        ?: throw Exception("Failed to generate underlying software key pair.")
+            SystemLogger.info("Generating new attested key pair for alias: '$alias' (UID: $uid)")
+            val newKeyPair =
+                generateSoftwareKeyPair(params)
+                    ?: throw Exception("Failed to generate underlying software key pair.")
 
-                val chain =
-                    generateCertificateChain(uid, newKeyPair, attestKeyAlias, params, securityLevel)
-                        ?: throw Exception("Failed to generate certificate chain for new key pair.")
+            val chain =
+                generateCertificateChain(uid, newKeyPair, attestKeyAlias, params, securityLevel)
+                    ?: throw Exception("Failed to generate certificate chain for new key pair.")
 
-                SystemLogger.info(
-                    "Successfully generated new certificate chain for alias: '$alias'."
-                )
-                Pair(newKeyPair, chain)
-            } catch (e: android.os.ServiceSpecificException) {
-                throw e
-            } catch (e: Exception) {
-                SystemLogger.error("Failed to generate attested key pair for alias '$alias'.", e)
-                null
-            }
+            SystemLogger.info("Successfully generated new certificate chain for alias: '$alias'.")
+            Pair(newKeyPair, chain)
+        } catch (e: android.os.ServiceSpecificException) {
+            throw e
+        } catch (e: Exception) {
+            SystemLogger.error("Failed to generate attested key pair for alias '$alias'.", e)
+            null
+        }
     }
 
     fun getIssuerFromKeybox(keybox: KeyBox) =
@@ -205,14 +203,16 @@ object CertificateGenerator {
     private fun buildKeyUsageFromPurposes(purposes: List<Int>): Int {
         var bits = 0
         for (purpose in purposes) {
-            bits = bits or when (purpose) {
-                KeyPurpose.SIGN -> KeyUsage.digitalSignature
-                KeyPurpose.DECRYPT -> KeyUsage.dataEncipherment
-                KeyPurpose.WRAP_KEY -> KeyUsage.keyEncipherment
-                KeyPurpose.AGREE_KEY -> KeyUsage.keyAgreement
-                KeyPurpose.ATTEST_KEY -> KeyUsage.keyCertSign
-                else -> 0
-            }
+            bits =
+                bits or
+                    when (purpose) {
+                        KeyPurpose.SIGN -> KeyUsage.digitalSignature
+                        KeyPurpose.DECRYPT -> KeyUsage.dataEncipherment
+                        KeyPurpose.WRAP_KEY -> KeyUsage.keyEncipherment
+                        KeyPurpose.AGREE_KEY -> KeyUsage.keyAgreement
+                        KeyPurpose.ATTEST_KEY -> KeyUsage.keyCertSign
+                        else -> 0
+                    }
         }
         return bits
     }
@@ -253,9 +253,13 @@ object CertificateGenerator {
 
         val signerAlgorithm =
             when (signingKeyPair.private.algorithm) {
-                "EC", "ECDSA" -> "SHA256withECDSA"
+                "EC",
+                "ECDSA" -> "SHA256withECDSA"
                 "RSA" -> "SHA256withRSA"
-                else -> throw IllegalArgumentException("Unsupported signing key: ${signingKeyPair.private.algorithm}")
+                else ->
+                    throw IllegalArgumentException(
+                        "Unsupported signing key: ${signingKeyPair.private.algorithm}"
+                    )
             }
         val contentSigner =
             JcaContentSignerBuilder(signerAlgorithm)
@@ -274,28 +278,33 @@ object CertificateGenerator {
         val notBefore = params.certificateNotBefore ?: Date(0)
         val notAfter = params.certificateNotAfter ?: Date(UNDEFINED_NOT_AFTER)
 
-        val builder = JcaX509v3CertificateBuilder(
-            subject,
-            params.certificateSerial ?: BigInteger.ONE,
-            notBefore,
-            notAfter,
-            subject,
-            keyPair.public,
-        )
+        val builder =
+            JcaX509v3CertificateBuilder(
+                subject,
+                params.certificateSerial ?: BigInteger.ONE,
+                notBefore,
+                notAfter,
+                subject,
+                keyPair.public,
+            )
 
         val keyUsageBits = buildKeyUsageFromPurposes(params.purpose)
         if (keyUsageBits != 0) {
             builder.addExtension(Extension.keyUsage, true, KeyUsage(keyUsageBits))
         }
 
-        val signerAlgorithm = when (keyPair.private.algorithm) {
-            "EC", "ECDSA" -> "SHA256withECDSA"
-            "RSA" -> "SHA256withRSA"
-            else -> throw IllegalArgumentException("Unsupported key: ${keyPair.private.algorithm}")
-        }
-        val contentSigner = JcaContentSignerBuilder(signerAlgorithm)
-            .setProvider(BouncyCastleProvider.PROVIDER_NAME)
-            .build(keyPair.private)
+        val signerAlgorithm =
+            when (keyPair.private.algorithm) {
+                "EC",
+                "ECDSA" -> "SHA256withECDSA"
+                "RSA" -> "SHA256withRSA"
+                else ->
+                    throw IllegalArgumentException("Unsupported key: ${keyPair.private.algorithm}")
+            }
+        val contentSigner =
+            JcaContentSignerBuilder(signerAlgorithm)
+                .setProvider(BouncyCastleProvider.PROVIDER_NAME)
+                .build(keyPair.private)
 
         return JcaX509CertificateConverter().getCertificate(builder.build(contentSigner))
     }

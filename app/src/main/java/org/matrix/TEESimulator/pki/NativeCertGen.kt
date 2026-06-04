@@ -69,7 +69,10 @@ object NativeCertGen {
             isAvailable = true
             SystemLogger.info("NativeCertGen: loaded libcertgen.so successfully")
         } catch (e: UnsatisfiedLinkError) {
-            SystemLogger.error("NativeCertGen: failed to load libcertgen.so, falling back to BouncyCastle", e)
+            SystemLogger.error(
+                "NativeCertGen: failed to load libcertgen.so, falling back to BouncyCastle",
+                e,
+            )
         }
     }
 
@@ -111,11 +114,13 @@ object NativeCertGen {
             throw IllegalStateException("No certificates in native result")
         }
 
-        val algorithmName = when (certs[0].publicKey.algorithm) {
-            "EC", "ECDSA" -> "EC"
-            "RSA" -> "RSA"
-            else -> certs[0].publicKey.algorithm
-        }
+        val algorithmName =
+            when (certs[0].publicKey.algorithm) {
+                "EC",
+                "ECDSA" -> "EC"
+                "RSA" -> "RSA"
+                else -> certs[0].publicKey.algorithm
+            }
         val keyFactory = KeyFactory.getInstance(algorithmName)
         val privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(pkBytes))
         val publicKey = certs[0].publicKey

@@ -186,11 +186,12 @@ object AndroidDeviceUtils {
 
     private val PERSIST_DIR = File("/data/adb/tricky_store")
 
-    private fun fileForProperty(propertyName: String): File = when (propertyName) {
-        "ro.boot.vbmeta.digest" -> File(PERSIST_DIR, "boot_hash.bin")
-        "ro.boot.vbmeta.public_key_digest" -> File(PERSIST_DIR, "boot_key.bin")
-        else -> File(PERSIST_DIR, "${propertyName.replace('.', '_')}.bin")
-    }
+    private fun fileForProperty(propertyName: String): File =
+        when (propertyName) {
+            "ro.boot.vbmeta.digest" -> File(PERSIST_DIR, "boot_hash.bin")
+            "ro.boot.vbmeta.public_key_digest" -> File(PERSIST_DIR, "boot_key.bin")
+            else -> File(PERSIST_DIR, "${propertyName.replace('.', '_')}.bin")
+        }
 
     private fun persistToFile(propertyName: String, bytes: ByteArray) {
         try {
@@ -294,7 +295,10 @@ object AndroidDeviceUtils {
             // Resolve from live system prop — matches what detectors see via getprop,
             // even when PIF has spoofed ro.build.version.security_patch via resetprop
             resolvedValue.equals("prop", ignoreCase = true) ->
-                parsePatchLevelValue(SystemProperties.get("ro.build.version.security_patch", ""), isLong)
+                parsePatchLevelValue(
+                    SystemProperties.get("ro.build.version.security_patch", ""),
+                    isLong,
+                )
             resolvedValue.equals("no", ignoreCase = true) -> DO_NOT_REPORT
             else -> parsePatchLevelValue(resolvedValue, isLong)
         }
@@ -396,23 +400,23 @@ object AndroidDeviceUtils {
 
     /**
      * Retrieves the attestation version for the given security level. The value follows the device
-     * OS: cached attestation data wins, then attestVersionMap[SDK_INT], then 400 as last resort.
-     * A static StrongBox=300 floor would force a major-version mismatch with the TEE chain on
-     * Android 16 devices that report keymaster 400 across both security levels.
+     * OS: cached attestation data wins, then attestVersionMap[SDK_INT], then 400 as last resort. A
+     * static StrongBox=300 floor would force a major-version mismatch with the TEE chain on Android
+     * 16 devices that report keymaster 400 across both security levels.
      *
      * @param securityLevel The security level of the attestation (1 for TEE, 2 for StrongBox).
      * @return The appropriate attestation version number.
      */
     fun getAttestVersion(securityLevel: Int): Int {
         val cached = DeviceAttestationService.CachedAttestationData?.attestVersion
-        val version = cached
-            ?: attestVersionMap[Build.VERSION.SDK_INT]
-            ?: 400 // Default to a recent version
-        val source = when {
-            cached != null -> "cache"
-            attestVersionMap.containsKey(Build.VERSION.SDK_INT) -> "map"
-            else -> "default"
-        }
+        val version =
+            cached ?: attestVersionMap[Build.VERSION.SDK_INT] ?: 400 // Default to a recent version
+        val source =
+            when {
+                cached != null -> "cache"
+                attestVersionMap.containsKey(Build.VERSION.SDK_INT) -> "map"
+                else -> "default"
+            }
         SystemLogger.debug("attestVersion=$version source=$source securityLevel=$securityLevel")
         return version
     }
@@ -519,10 +523,7 @@ object AndroidDeviceUtils {
     val moduleHash: ByteArray by lazy {
         DeviceAttestationService.CachedAttestationData?.moduleHash
             ?: runCatching {
-                    data class ModuleEntry(
-                        val nameEncoded: ByteArray,
-                        val fullEncoded: ByteArray,
-                    )
+                    data class ModuleEntry(val nameEncoded: ByteArray, val fullEncoded: ByteArray)
 
                     val modules =
                         apexInfos.map { (packageName, versionCode) ->

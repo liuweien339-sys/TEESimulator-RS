@@ -110,16 +110,20 @@ abstract class BinderInterceptor : Binder() {
      */
     final override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
         val txId = data.readLong()
-        val result = try {
-            when (code) {
-                PRE_TRANSACT_CODE -> handlePreTransact(txId, data)
-                POST_TRANSACT_CODE -> handlePostTransact(txId, data)
-                else -> return super.onTransact(code, data, reply, flags)
+        val result =
+            try {
+                when (code) {
+                    PRE_TRANSACT_CODE -> handlePreTransact(txId, data)
+                    POST_TRANSACT_CODE -> handlePostTransact(txId, data)
+                    else -> return super.onTransact(code, data, reply, flags)
+                }
+            } catch (e: Throwable) {
+                SystemLogger.error(
+                    "[TX_ID: $txId] Interceptor exception, falling through to HAL",
+                    e,
+                )
+                TransactionResult.ContinueAndSkipPost
             }
-        } catch (e: Throwable) {
-            SystemLogger.error("[TX_ID: $txId] Interceptor exception, falling through to HAL", e)
-            TransactionResult.ContinueAndSkipPost
-        }
         writeResultToReply(result, reply!!)
         return true
     }
@@ -307,7 +311,9 @@ abstract class BinderInterceptor : Binder() {
                 data.writeInt(filteredCodes.size)
                 for (code in filteredCodes) data.writeInt(code)
                 backdoor.transact(REGISTER_INTERCEPTOR_CODE, data, reply, 0)
-                SystemLogger.info("Registered interceptor for target: $target (${filteredCodes.size} filtered codes)")
+                SystemLogger.info(
+                    "Registered interceptor for target: $target (${filteredCodes.size} filtered codes)"
+                )
             } catch (e: Exception) {
                 SystemLogger.error("Failed to register binder interceptor.", e)
             } finally {

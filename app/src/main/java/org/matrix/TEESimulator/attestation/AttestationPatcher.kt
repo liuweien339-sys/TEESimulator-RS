@@ -4,6 +4,7 @@ import android.security.keystore.KeyProperties
 import java.nio.charset.StandardCharsets
 import java.security.cert.Certificate
 import java.security.cert.X509Certificate
+import java.util.Date
 import org.bouncycastle.asn1.*
 import org.bouncycastle.asn1.x509.Extension
 import org.bouncycastle.cert.X509CertificateHolder
@@ -16,7 +17,6 @@ import org.matrix.TEESimulator.logging.SystemLogger
 import org.matrix.TEESimulator.pki.KeyBox
 import org.matrix.TEESimulator.pki.KeyBoxManager
 import org.matrix.TEESimulator.util.toHex
-import java.util.Date
 
 /**
  * Handles the modification (patching) of Android Key Attestation extensions within certificates.
@@ -287,7 +287,8 @@ object AttestationPatcher {
         val (allFields, teeEnforcedMap, originalRootOfTrust) = parsed
 
         SystemLogger.verbose {
-            val formattedString = allFields.joinToString(separator = ", ") { formatAsn1Primitive(it) }
+            val formattedString =
+                allFields.joinToString(separator = ", ") { formatAsn1Primitive(it) }
             "Original attestation data: $formattedString"
         }
 
@@ -317,7 +318,8 @@ object AttestationPatcher {
         allFields[AttestationConstants.KEY_DESCRIPTION_TEE_ENFORCED_INDEX] = sortedTeeEnforced
         val patchedSequence = DERSequence(allFields)
         SystemLogger.verbose {
-            val formattedString = patchedSequence.joinToString(separator = ", ") { formatAsn1Primitive(it) }
+            val formattedString =
+                patchedSequence.joinToString(separator = ", ") { formatAsn1Primitive(it) }
             "Patched  attestation data: $formattedString"
         }
         val patchedOctets = DEROctetString(patchedSequence)
