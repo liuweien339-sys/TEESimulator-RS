@@ -103,10 +103,24 @@ object CertificateGenerator {
 
             val keybox = getKeyboxForAlgorithm(uid, params.algorithm)
 
+            val wantsAttestKey =
+                attestKeyAlias != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
             val attestKeyInfo =
-                if (attestKeyAlias != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    getAttestationKeyInfo(uid, attestKeyAlias)
-                } else null
+                if (wantsAttestKey) getAttestationKeyInfo(uid, attestKeyAlias) else null
+
+            // When the caller designates an attest key, the leaf MUST be signed by it and returned
+            // alone (the caller appends the attest key's own chain). Re-rooting under the keybox
+            // here instead yields a self-rooted leaf that, concatenated with the attest key chain,
+            // double-roots and fails verification (WRONG_PUBLIC_KEY_TYPE). Refuse rather than emit
+            // a
+            // broken chain.
+            if (wantsAttestKey && attestKeyInfo == null) {
+                SystemLogger.error(
+                    "Designated attest key '$attestKeyAlias' not found for uid $uid; refusing to " +
+                        "emit a keybox-rooted leaf that would break the caller's chain."
+                )
+                return null
+            }
 
             val (signingKey, issuer) =
                 attestKeyInfo?.let { it.first to it.second }

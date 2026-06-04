@@ -591,10 +591,16 @@ class KeyMintSecurityLevelInterceptor(
                     )
                 }
 
+                // Device-ID attestation (IMEI/MEID/serial) is a factory-provisioned capability the
+                // real TEE frequently cannot satisfy (it returns CANNOT_ATTEST_IDS). A privileged
+                // caller — shell/system, e.g. the Key Attestation app via Shizuku — is entitled to
+                // request it, but arrives un-targeted, so don't skip it: it must reach the forge
+                // path below. The permission gate still rejects ordinary apps further down.
                 if (
                     ConfigurationManager.shouldSkipUid(callingUid) &&
                         attestationKey == null &&
-                        !isAttestKeyRequest
+                        !isAttestKeyRequest &&
+                        !hasDeviceIdAttestation
                 ) {
                     logProbe("SKIP")
                     return TransactionResult.ContinueAndSkipPost
@@ -702,11 +708,15 @@ class KeyMintSecurityLevelInterceptor(
 
                 val keyId = KeyIdentifier(callingUid, keyDescriptor.alias)
 
+                // Device-ID attestation must be forged, not patched: the real TEE returns
+                // CANNOT_ATTEST_IDS, so there is no real chain to patch — only a synthetic one
+                // carrying the requested IDs and rooted under the keybox will satisfy the caller.
                 val forceGenerate =
                     oversized ||
                         ConfigurationManager.shouldGenerate(callingUid) ||
                         isAttestKeyRequest ||
-                        attestationKey != null
+                        attestationKey != null ||
+                        hasDeviceIdAttestation
 
                 SystemLogger.trace {
                     "[TRACE-$txId] dispatch: forceGen=$forceGenerate hasChallenge=${challenge != null} isSymmetric=$isSymmetric isAttestKey=$isAttestKeyRequest"
@@ -858,6 +868,19 @@ class KeyMintSecurityLevelInterceptor(
             return InterceptorUtils.createTypedObjectReply(metadata, diagnosticTag = "gen-mode-sym")
         }
 
+        // The framework can designate the attest key by alias OR — for a persistent key the caller
+        // reuses across sessions — by KEY_ID with a null alias. Resolve both: the leaf must be
+        // signed by the attest key the caller chains to via getCertChain, never silently re-rooted
+        // under the keybox (which double-roots the assembled chain and fails verification).
+        val attestKeyAlias: String? =
+            attestationKey?.let { it.alias ?: findGeneratedAliasByKeyId(callingUid, it.nspace) }
+        if (attestationKey != null && attestKeyAlias == null) {
+            throw android.os.ServiceSpecificException(
+                KEYMINT_INVALID_ARGUMENT,
+                "Designated attest key not resolvable (nspace=${attestationKey.nspace}) for uid $callingUid",
+            )
+        }
+
         var forgePath = "FORGE-bouncycastle"
         val keyData =
             if (NativeCertGen.isAvailable && attestationKey == null) {
@@ -867,7 +890,7 @@ class KeyMintSecurityLevelInterceptor(
                     ?: CertificateGenerator.generateAttestedKeyPair(
                         callingUid,
                         keyDescriptor.alias,
-                        attestationKey?.alias,
+                        attestKeyAlias,
                         parsedParams,
                         securityLevel,
                     )
@@ -875,7 +898,7 @@ class KeyMintSecurityLevelInterceptor(
                 CertificateGenerator.generateAttestedKeyPair(
                     callingUid,
                     keyDescriptor.alias,
-                    attestationKey?.alias,
+                    attestKeyAlias,
                     parsedParams,
                     securityLevel,
                 )
@@ -1557,6 +1580,20 @@ class KeyMintSecurityLevelInterceptor(
                 .filter { (keyIdentifier, _) -> keyIdentifier.uid == callingUid }
                 .find { (_, info) -> info.nspace == nspace }
                 ?.value
+        }
+
+        /**
+         * Resolves the alias of a generated key addressed by KEY_ID. The framework hands a reused
+         * (persistent) attest key to generateKey as a KEY_ID descriptor with a null alias; this
+         * maps it back to the alias our cache is keyed by, so the leaf is signed by the attest key
+         * the caller will chain to rather than silently re-rooted under the keybox.
+         */
+        fun findGeneratedAliasByKeyId(callingUid: Int, nspace: Long?): String? {
+            if (nspace == null || nspace == 0L) return null
+            return generatedKeys.entries
+                .firstOrNull { (keyId, info) -> keyId.uid == callingUid && info.nspace == nspace }
+                ?.key
+                ?.alias
         }
 
         fun findTeeResponseByKeyId(callingUid: Int, nspace: Long?): KeyEntryResponse? {
