@@ -713,12 +713,16 @@ class KeyMintSecurityLevelInterceptor(
                 // Device-ID attestation must be forged, not patched: the real TEE returns
                 // CANNOT_ATTEST_IDS, so there is no real chain to patch — only a synthetic one
                 // carrying the requested IDs and rooted under the keybox will satisfy the caller.
+                // AUTO attestation forges from the keybox instead of trusting the EC-only TEE
+                // probe, which cannot tell whether the device can attest RSA / device-ID / StrongBox.
                 val forceGenerate =
                     oversized ||
                         ConfigurationManager.shouldGenerate(callingUid) ||
                         isAttestKeyRequest ||
                         attestationKey != null ||
-                        hasDeviceIdAttestation
+                        hasDeviceIdAttestation ||
+                        (ConfigurationManager.isAutoMode(callingUid) &&
+                            parsedParams.attestationChallenge != null)
 
                 SystemLogger.trace {
                     "[TRACE-$txId] dispatch: forceGen=$forceGenerate hasChallenge=${challenge != null} isSymmetric=$isSymmetric isAttestKey=$isAttestKeyRequest"
