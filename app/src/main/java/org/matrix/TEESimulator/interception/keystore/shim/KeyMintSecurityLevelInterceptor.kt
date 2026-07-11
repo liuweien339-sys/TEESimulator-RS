@@ -2,6 +2,7 @@ package org.matrix.TEESimulator.interception.keystore.shim
 
 import android.hardware.security.keymint.Algorithm
 import android.hardware.security.keymint.BlockMode
+import android.hardware.security.keymint.Digest
 import android.hardware.security.keymint.EcCurve
 import android.hardware.security.keymint.KeyOrigin
 import android.hardware.security.keymint.KeyParameter
@@ -459,6 +460,7 @@ class KeyMintSecurityLevelInterceptor(
                             padding = parsedParams.padding.ifEmpty { keyParams.padding },
                             nonce = parsedParams.nonce,
                             minMacLength = parsedParams.minMacLength ?: keyParams.minMacLength,
+                            macLength = parsedParams.macLength,
                         )
                     } else parsedParams
 
@@ -798,7 +800,12 @@ class KeyMintSecurityLevelInterceptor(
             val algoName =
                 when (parsedParams.algorithm) {
                     Algorithm.AES -> "AES"
-                    Algorithm.HMAC -> "HmacSHA256"
+                    Algorithm.HMAC ->
+                        when (parsedParams.digest.firstOrNull()) {
+                            Digest.SHA_2_384 -> "HmacSHA384"
+                            Digest.SHA_2_512 -> "HmacSHA512"
+                            else -> "HmacSHA256"
+                        }
                     else ->
                         throw android.os.ServiceSpecificException(
                             KEYMINT_INVALID_ARGUMENT,
